@@ -180,7 +180,20 @@ static size_t sse_write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
     return total;
 }
 
-/* zpl event -> write payload to the printer */
+static int agent_build_url(char *url, size_t url_len, const char *server_url,
+                           const char *agent_id, CURL *easy) {
+    char *escaped = curl_easy_escape(easy, agent_id, 0);
+    if (!escaped) {
+        return -1;
+    }
+    int n = snprintf(url, url_len, "%s/agent/%s", server_url, escaped);
+    curl_free(escaped);
+    if (n < 0 || (size_t)n >= url_len) {
+        return -1;
+    }
+    return 0;
+}
+
 static void on_sse_event(agent_t *agent, const char *event,
                          const char *data, size_t data_len) {
     (void)data_len;
@@ -214,8 +227,12 @@ void curl_uv_sse_start(agent_t *agent) {
         return;
     }
 
-    char url[640];
-    snprintf(url, sizeof(url), "%s/agent/%s", app->server_url, agent->id);
+    char url[768];
+    if (agent_build_url(url, sizeof(url), app->server_url, agent->id, easy) != 0) {
+        log_err("agent %s: failed to build SSE URL", agent->id);
+        curl_easy_cleanup(easy);
+        return;
+    }
 
     curl_priv_t *priv = calloc(1, sizeof(*priv));
     if (!priv) {
@@ -295,8 +312,12 @@ void curl_uv_post_output(agent_t *agent, const unsigned char *data, size_t len) 
         return;
     }
 
-    char url[640];
-    snprintf(url, sizeof(url), "%s/agent/%s", app->server_url, agent->id);
+    char url[768];
+    if (agent_build_url(url, sizeof(url), app->server_url, agent->id, easy) != 0) {
+        curl_easy_cleanup(easy);
+        free(body);
+        return;
+    }
 
     curl_priv_t *priv = calloc(1, sizeof(*priv));
     if (!priv) {

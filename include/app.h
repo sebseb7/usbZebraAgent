@@ -8,7 +8,7 @@
 #include <curl/curl.h>
 #include <libusb-1.0/libusb.h>
 
-#define AGENT_ID_MAX 32
+#define AGENT_ID_MAX 128
 #define SSE_EVENT_MAX 64
 #define SSE_LINE_MAX 8192
 #define USB_READ_BUF 4096
@@ -58,7 +58,7 @@ void sse_parser_free(sse_parser_t *p);
 /* ---- Per-printer agent ---- */
 typedef struct agent {
     app_t *app;
-    char id[AGENT_ID_MAX];       /* "usb:001:003"                              */
+    char id[AGENT_ID_MAX];       /* printer serial, or "usb:001:003" fallback */
     uint8_t bus;
     uint8_t addr;
 

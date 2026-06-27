@@ -96,6 +96,68 @@ static void usb_timeout_cb(uv_timer_t *timer) {
 
 /* ---- agent lifecycle ---- */
 
+static agent_t *agent_find_by_id(app_t *app, const char *id) {
+    for (agent_t *a = app->agents; a; a = a->next) {
+        if (strcmp(a->id, id) == 0) {
+            return a;
+        }
+    }
+    return NULL;
+}
+
+static int device_read_serial(libusb_device *dev, libusb_device_handle *handle,
+                              char *out, size_t out_len) {
+    if (out_len == 0) {
+        return 0;
+    }
+    out[0] = '\0';
+
+    struct libusb_device_descriptor desc;
+    if (libusb_get_device_descriptor(dev, &desc) != 0 || desc.iSerialNumber == 0) {
+        return 0;
+    }
+
+    unsigned char buf[256];
+    int n = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, buf,
+                                               sizeof(buf));
+    if (n < 1) {
+        return 0;
+    }
+
+    while (n > 0 && (buf[n - 1] == ' ' || buf[n - 1] == '\t')) {
+        n--;
+    }
+    int start = 0;
+    while (start < n && (buf[start] == ' ' || buf[start] == '\t')) {
+        start++;
+    }
+    if (start >= n) {
+        return 0;
+    }
+
+    size_t copy = (size_t)(n - start);
+    if (copy >= out_len) {
+        copy = out_len - 1;
+    }
+    memcpy(out, buf + start, copy);
+    out[copy] = '\0';
+    return 1;
+}
+
+static void agent_make_id(app_t *app, libusb_device *dev,
+                          libusb_device_handle *handle, uint8_t bus,
+                          uint8_t addr, char *id, size_t id_len) {
+    char serial[AGENT_ID_MAX];
+    if (device_read_serial(dev, handle, serial, sizeof(serial))) {
+        snprintf(id, id_len, "%s", serial);
+        if (agent_find_by_id(app, id)) {
+            snprintf(id, id_len, "%s-%03u:%03u", serial, bus, addr);
+        }
+        return;
+    }
+    snprintf(id, id_len, "usb:%03u:%03u", bus, addr);
+}
+
 static agent_t *agent_find(app_t *app, uint8_t bus, uint8_t addr) {
     for (agent_t *a = app->agents; a; a = a->next) {
         if (a->bus == bus && a->addr == addr) {
@@ -322,6 +384,10 @@ static void agent_open(app_t *app, libusb_device *dev, uint8_t bus, uint8_t addr
     }
 
     libusb_set_auto_detach_kernel_driver(handle, 1);
+
+    char id[AGENT_ID_MAX];
+    agent_make_id(app, dev, handle, bus, addr, id, sizeof(id));
+
     rc = libusb_claim_interface(handle, iface);
     if (rc != 0) {
         log_err("usb:%03u:%03u claim iface %d failed: %s", bus, addr, iface,
@@ -344,7 +410,7 @@ static void agent_open(app_t *app, libusb_device *dev, uint8_t bus, uint8_t addr
     agent->ep_in = ep_in;
     agent->ep_out = ep_out;
     agent->ep_in_mps = mps;
-    snprintf(agent->id, sizeof(agent->id), "usb:%03u:%03u", bus, addr);
+    snprintf(agent->id, sizeof(agent->id), "%s", id);
 
     uv_timer_init(app->loop, &agent->reconnect_timer);
     agent->reconnect_timer.data = agent;
