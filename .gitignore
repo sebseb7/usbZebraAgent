@@ -1,0 +1,21 @@
+# Build (Makefile)
+build/
+usbprintagent
+*.o
+*.a
+*.so
+*.dylib
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Debug / core dumps
+core
+core.*
+vgcore.*
+*.dSYM/

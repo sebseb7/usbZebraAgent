@@ -1,0 +1,18 @@
+[Unit]
+Description=USB print agent (libusb relay to agent server)
+After=network-online.target udev.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=usbprintagent
+Group=plugdev
+ExecStart=/usr/local/bin/usbprintagent
+EnvironmentFile=-/etc/default/usbprintagent
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

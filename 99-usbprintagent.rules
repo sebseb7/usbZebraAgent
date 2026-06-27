@@ -1,0 +1,5 @@
+# usbprintagent — libusb access for users in the plugdev group
+# USB printer class (whole device)
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{bDeviceClass}=="07", MODE="0660", GROUP="plugdev"
+# Zebra (per-interface class printers, vendor 0a5f)
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="0a5f", MODE="0660", GROUP="plugdev"

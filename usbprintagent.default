@@ -1,0 +1,2 @@
+# usbprintagent configuration (sourced by systemd)
+AGENT_SERVER_URL=http://127.0.0.1:3847
