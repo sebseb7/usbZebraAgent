@@ -4,10 +4,8 @@ SSE based network printer agent for Zebra USB printers.
 
 Built on libuv, libcurl, and libusb.
 
-On Ubuntu:
-
 ```bash
-sudo apt install build-essential libuv1-dev libusb-1.0-0-dev libcurl4-openssl-dev
+sudo ./installDeps.sh
 make
 ```
 
